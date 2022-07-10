@@ -41,19 +41,18 @@ class NewsListViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        newsListView.tableView.delegate = viewModel
+        setupNavigationBar()
         bind()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        setupNavigationBar()
+        setupRightButton()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         removeRightButton()
-        changeNavigationTitleSize()
     }
 }
 
@@ -62,10 +61,11 @@ private extension NewsListViewController {
         title = "NEWS"
         navigationController?.navigationBar.prefersLargeTitles = true
         navigationController?.navigationBar.isTranslucent = false
+    }
+    
+    func setupRightButton() {
         navigationController?.navigationBar.addSubview(newsListView.rightBarButton)
-        
         guard let targetView = self.navigationController?.navigationBar else { return }
-
         newsListView.rightBarButton.snp.makeConstraints {
             $0.trailing.equalTo(targetView.snp.trailing).inset(16.0)
             $0.bottom.equalTo(targetView.snp.bottom).inset(8.0)
@@ -83,12 +83,11 @@ private extension NewsListViewController {
         }
     }
     
-    func changeNavigationTitleSize() {
-        navigationItem.title = ""
-        navigationController?.navigationBar.prefersLargeTitles = false
-    }
-    
     func bind() {
+        newsListView.tableView
+            .rx.setDelegate(viewModel)
+            .disposed(by: disposeBag)
+        
         output.newsList
             .drive(newsListView.tableView.rx.items) { [weak self] tableView, index, element in
                 guard let cell = tableView.dequeueReusableCell(withIdentifier: NewsListViewCell.identifier) as? NewsListViewCell else { return UITableViewCell() }
@@ -110,6 +109,12 @@ private extension NewsListViewController {
                     at: .top,
                     animated: true
                 )
+            })
+            .disposed(by: disposeBag)
+        
+        output.reloadTable
+            .emit(onNext: { [weak self] _ in
+                self?.newsListView.tableView.reloadData()
             })
             .disposed(by: disposeBag)
     }
